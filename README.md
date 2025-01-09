@@ -1,2 +1,5 @@
 # Understanding-Equity-in-Policy
-An Examination of Legislative Approaches Through Correlated Topic Modeling
+An Examination of Legislative Approaches Through Topic Modeling
+
+Equity-focused policymaking in the U.S. addresses systemic inequality across education, healthcare, and public services. This study analyzes 465 equity-related bills from the 117th Congressional session using topic modeling and semantic analysis to uncover patterns, correlations, and gaps in legislative priorities. Findings reveal fragmented equity discourse, with administrative regulations and education programs receiving significant attention, while areas like financial planning and contracts are underexplored. Healthcare terms and geographically specific language highlight initiatives supporting health and marginalized communities. These trends underscore the need for sustained analysis to address disparities and promote integrated, intersectional approaches. This research offers policymakers, scholars, and advocates actionable insights into advancing equity through comprehensive legislative efforts.
+
