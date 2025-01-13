@@ -1,0 +1,52 @@
+import pandas as pd
+import requests
+!pip install --upgrade gspread
+from bs4 import BeautifulSoup
+
+from google.colab import auth
+import gspread
+from google.auth import default # Import the default function from google.auth
+
+# Authenticate with Google
+auth.authenticate_user()
+
+# Get credentials
+creds, _ = default() # Get credentials using the default() function
+gc = gspread.authorize(creds) # Authorize gspread with these credentials
+
+# Open the Google Sheet 
+# Replace 'your_sheet_name' or 'your_sheet_url' with the actual values
+# spreadsheet = gc.open('your_sheet_name')  # By name
+spreadsheet = gc.open_by_url('https://docs.google.com/spreadsheets/d/1F-AF77smLX80zEEFpXk_9UBgSQIHGIDr4PdLER-or_g/edit?usp=sharing')
+
+# Get all values 
+data = worksheet.get_all_values()
+
+# Convert the data to a DataFrame
+df = pd.DataFrame(data[1:], columns=data[0])  # Assuming the first row is the header
+
+# Rename columns 
+df = df.rename(columns={'packageId': 'bill_id', 'title': 'title', 'htmlLink': 'link_column'})
+
+def extract_bill_text(url):
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an exception for bad status codes
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Extract bill text
+    bill_text_element = soup.find('pre')  # Assuming text is within a <pre> tag
+    bill_text = bill_text_element.text.strip() if bill_text_element else None
+
+    return bill_text
+
+# Extract bill text for each link
+df['bill_text'] = df['link_column'].apply(extract_bill_text)
+
+# Download the DataFrame as a CSV file
+df.to_csv('bill_data.csv', index=False)
+
+from google.colab import drive
+drive.mount('/content/drive')
+df.to_csv('/content/drive/My Drive/bill_data.csv', index=False)
+print("CSV file saved to Google Drive: /content/drive/My Drive/bill_data.csv")
