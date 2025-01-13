@@ -1,0 +1,257 @@
+---
+title: "equity_bill_tm"
+author: "rin"
+date: "2024-12-05"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Equity Bills
+
+#### Web Scraping and Text Collection
+
+Search and Collection Process:
+
+-   Utilized a Boolean search on the Govinfo.gov database to identify
+    equity-related bills from the 117th Congressional session, focusing
+    on House bills [search
+    term](https://www.govinfo.gov/app/search/%7B%22query%22%3A%22equity%20OR%20marginalized%20OR%20barriers%20OR%20wage%20equity%20OR%20income%20inequality%20OR%20gender%20equity%20OR%20climate%20justice%20OR%20health%20OR%20disability%20rights%20OR%20school%20readiness%20OR%20BIPOC%20OR%20underserved%20OR%20Medicaid%20OR%20diversity%20OR%20inclusion%20OR%20disadvantage%20OR%20systemic%20inequality%20OR%20justice%20OR%20financial%20literacy%20OR%20healthcare%20access%22%2C%22offset%22%3A0%2C%22facets%22%3A%7B%22publishdatehier%22%3A%5B%222024%22%5D%2C%22accodenav%22%3A%5B%22BILLS%22%5D%2C%22governmentauthornav%22%3A%5B%22Congress%22%5D%2C%22dochierarchy%22%3A%5B%22House%20Bill%20(H.R.)%22%5D%7D%2C%22filterOrder%22%3A%5B%22publishdatehier%22%2C%22accodenav%22%2C%22governmentauthornav%22%2C%22dochierarchy%22%5D%7D)
+
+-   Compiled the resulting dataset of approximately 500 bills, including
+    the bill number, title, and full text content
+
+-   Performed a topic modeling analysis on the bill text to uncover the
+    key themes and topics present in the equity-related legislation
+
+Research Questions:
+
+1\. What are the patterns and relationships between the bills identified
+as relating to equity?
+
+2\. What are the correlated topics and themes that emerge from the
+equity-focused bills?
+
+3\. How do the bills define and address the concept of equity in the
+legislative context?
+
+4\. What are the main areas and issues that equity-related bills are
+targeting?
+
+Implications:
+
+-   The topic modeling analysis will reveal insights into how equity is
+    being conceptualized and prioritized within recent legislation
+
+-   Identifying the key themes and correlations between equity-focused
+    bills can shed light on the legislative priorities and approaches to
+    addressing equity
+
+-   Understanding the legislative landscape around equity can inform
+    policy discussions, advocacy efforts, and future bill proposals to
+    ensure equity is being comprehensively addressed
+
+-   Evaluating the search and analysis process can help refine methods
+    for tracking and understanding equity-related policy making
+
+*By conducting this in-depth examination of equity-focused bills, the
+research aims to provide a clearer picture of how equity is being
+defined and integrated into the legislative agenda. The findings can
+inform ongoing efforts to advance equity through the policy making
+process.*
+
+#### Boolean Search
+
+> equity OR marginalized OR barriers OR wage equity OR income inequality
+> OR gender equity OR climate justice OR health OR disability rights OR
+> school readiness OR BIPOC OR under-served OR Medicaid OR diversity OR
+> inclusion OR disadvantage OR systemic inequality OR justice OR
+> financial literacy OR healthcare access
+
+This is not a comprehensive search term, but looked to encompass as much
+as possible while staying inside the search parameters on govinfo.
+
+### Data Collection and Cleaning
+
+These equity bills were then downloaded into a csv, that included
+relevant bill title, dates, co-sponsors..etc In order to collect the
+bill text, the htmls links needed to be systematically opened,
+webscraped and downloaded into a csv with their relevant titles. In
+order to do this efficiently, I used colab and gemini to develop a
+script for this, leaning on the methodology given by [Erik
+L](https://medium.com/@lobodemonte/congress-gov-web-scraping-with-beautifulsoup-37af19f2e1f4).
+The link to the colab script:\
+[Colab
+Notebook](https://colab.research.google.com/drive/1XAZ_AMdDEgsSw-s4D6sB5tvxFZrkY4IF?authuser=0#scrollTo=51aUtRCPAN3E).
+
+```{r}
+library(tm)
+library(topicmodels)
+library(tidyverse)
+library(data.table)
+library(tidyr)
+library(tidytext)
+library(slam)
+library(ggrepel)
+library(MASS)
+library(readtext)
+library(textstem)
+library(knitr)
+
+
+
+df <- read.csv("/Users/gfrey/Desktop/columbia/equity_fulltext.csv")  
+
+df_clean <- df[df$bill_text != "", ] 
+
+#df_clean <- df_clean %>%
+ # select("index", "collection", "bill_id",  "title", "xmlLink", "teaser", "publishdate", "bill_text")
+
+words <- readLines("/Users/gfrey/Downloads/stopwords-en.txt")
+corpus <- Corpus(VectorSource(df_clean$bill_text))  
+stopwords <- c(
+  # General organizational and structural terms
+  "agencies", "association", "centers", "company", "corporation", "controlled", 
+  "entity", "entitiestitle", "firmthe", "institutions", "intermediaries", 
+  "institution", "members", "officer", "officialthe", "ownership", "positions", 
+  "presidents", "project", "research", "serves", "subsequently", "team", "work", 
+  "workplace", "organization", "bureau", "banks", "barriers", "bank", "banking", "administrator", 
+  "administrationprovided", "administrator", "assistant", "employees", "managers", "members", "america", "assign", "assigned",
+  # Financial and economic terms
+  "financial", "funding", "funds", "fundsany", "investment", "payable", "patents", 
+  "package", "packages", "paycheck", "profit", "profiting", "prohibit", "prohibition", 
+  "rates", "securities", "shares", "traded", "credit", "currency", "insurance", "loan", 
+  "lending", "notes", "funds", "capital", "creditor", "debt", "interest", "liability", "development","basic",  "board", "chapterschapter", "schedule", "serve", "servicein", "submit", "subparagraph", "table", "term", "treatment", "affiliate", "iii",
+  # Legislative, policy, and government-related terms
+  "bills", "bill", "code", "judiciary", "legislation", "policy", "report", "reports", "sentence", 
+  "amendmentthe", "government", "law", "policyholder", "rules", "speaker", "reportnot", 
+  "subsequent", "supplemental", "violation", "regarding", "regulations", "summaries", "lawmakers","congressional", "congress", "us", "introduced", "house", "congress", "session", "office", "united", "states", "hr", "ih", "title", "amend", "representatives",  "committee", "senate", "branch", "administrations", "federal", "subsection", "added", "offical", "service", "former", "entities", "section", "services", "administration", "doc", "publishing", "agency", "president", "act", "assembled", "enacted", "following", "referred", "shall", "cited", "sec", "public", "short", "paragraph", "secretary", "including", "provided", "department", "striking", "approximately", "unit", "amended", "land", "bay", "term", "including", "described", "heading", "national", "state", "inserting", "period", "including", "add", "agencythe", "amend", "amendment","amendmentsection", "apply","assignment", "authority", "authorization", "authorize","applicable", "employee" , "insert", "include" , "base" , "representative", 
+  # Procedural and operational terms
+  "action", "active", "addressedin", "addresses", "assureds", "advocacy", "applied", "application", 
+  "approved", "assessment", "approaches", "assuring", "attract", "clarify", "classify", "communicate", 
+  "compel", "compelling", "confirm", "contradict", "coordinate", "correction", "distribution", 
+  "documentation", "draft", "editing", "enhancement", "execution", "goal", "implement", "implementation",
+  # Temporal terms (time references)
+  "january", "august", "september", "november", "december", "fifth", "sixth", "seventeenth", 
+  "tenth", "twentieth", "twentyfirst", "twentysecond", "third", "second", "first", "years", "month", "june", "year", "may", "date", "october", "march", "ending", "beginning",
+  # Compliance and enforcement-related terms
+  "ceases", "classified", "corrupt", "demonstrate", "deemed", "prohibit", "prohibition", 
+  "penalty", "prosecute", "punished", "punish", "violation", "regulation", "remedial", "enforcement", 
+  "finalize", "restrictions", "restrict", "terminate", "terminates", "termination", "generala", "generalto", "gohmert", "granted", "security", "defense",
+  # Miscellaneous terms
+  "individual", "influence", "input", "prior", "preparedness", "response", "respect", "return", 
+  "review", "revised", "show", "prove", "significant", "testing", "updated", "validate", "clarify",
+  "orientation", "reorganization", "feedback", "final", "draft", "confirm", "details", "report", "selection", "th", "st", "h", "r",
+  "mr", "c", "d", "ff", "b", "usc",
+  # Technical or professional terms
+  "analysis", "approaches", "architecture", "articles", "assessment", "associated", "attack", 
+  "attackthe", "authorities", "authorizes", "aviation", "aircraft", "airports", "airspace", "airworthiness",
+  "analyses", "appliance", "applied", "appropriate", "approval", "technology", "infrastructure", "statistics",
+  "measurement", "system", "network", "metrics", "strike", "aaa", "aaciv", "aciv" , "fmap", "core"
+)
+
+
+# Pre-processing steps: 
+corpus <- tm_map(corpus, content_transformer(tolower))  # Convert to lowercase
+corpus <- tm_map(corpus, removePunctuation)            # Remove punctuation
+corpus <- tm_map(corpus, removeNumbers)                # Remove numbers
+
+to_space <- content_transformer(function(x, pattern)
+  { 
+    return (gsub(pattern, " ", x))
+  }
+)
+# removing unwanted symbols
+corpus <- tm_map(corpus, to_space, "\n")
+
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, removeWords, stopwords("en"))
+corpus <- tm_map(corpus, removeWords, stopwords)
+corpus <- tm_map(corpus, removeWords, words)
+corpus <- tm_map(corpus, content_transformer(lemmatize_strings))
+
+#  Document-Term Matrix (DTM) // inspecting 
+dtm <- DocumentTermMatrix(corpus)
+terms <- Terms(dtm)
+freq_terms <- tm::findFreqTerms(dtm)
+
+term_tfidf <- tapply(dtm$v / row_sums(dtm)[dtm$i], dtm$j, mean) * log2(nDocs(dtm)/col_sums(dtm > 0))
+summary(term_tfidf)
+
+plot(density(term_tfidf))
+
+alpha <- 0.0126
+text_DTM_trimmed <- dtm[row_sums(dtm) > 0, term_tfidf >= alpha]
+dim(text_DTM_trimmed)
+
+
+library(stringr)
+word_lengths <- str_count(df_clean$bill_text, '\\w+')
+mean_word_length <- mean(word_lengths, na.rm = TRUE)
+median_word_length <- median(word_lengths, na.rm = TRUE)
+sd_word_length <- sd(word_lengths, na.rm = TRUE)
+min_bill <- min(word_lengths)
+max_bill <- max(word_lengths)
+
+
+Summary Statistics
+
+| Variable                  | Count    |
+|---------------------------|----------|
+| Total Bills               | 465      |
+| Mean Bill Length (Words)  | 1604.095 |
+| Median Bill Length (Words | 1147     |
+| SD                        | 1426.023 |
+| Min Bill Length           | 151      |
+| Max Bill Length           | 6953     |
+
+### Perplexity plot for number of K
+
+Used 10 k, as it was a compromise between minimizing and maximizing..
+
+```{r}
+control_CTM_VEM <- list(
+  estimate.beta = TRUE, verbose = 0, prefix = tempfile(), save = 0, keep = 0,
+  seed = as.integer(Sys.time()), nstart=1L, best = TRUE,
+  var = list(iter.max=100, tol=10^-6),
+  em = list(iter.max=500, tol=10^-4),
+  cg = list(iter.max=100, tol=10^5)
+)
+
+set.seed(100)
+topics <- c(2, 3, 4, 5, 6, 7, 8, 9, 10, 15) ##set k equals to 2 3 4 5 6 7 8 9 10 15.
+seed <- 2
+D <- length(df_clean$bill_text) 
+folding <- sample(rep(seq_len(10), ceiling(D))[seq_len(D)])
+table(folding)
+
+perp_by_col <- vector()
+for (k in topics) {
+ perp_by_row <- vector()
+  for (chain in seq_len(10)) {
+    training <- CTM(text_DTM_trimmed[folding != chain,], k = k,
+                    control = control_CTM_VEM)
+    testing <- CTM(text_DTM_trimmed[folding == chain,], model = training,
+                   control = control_CTM_VEM)
+    perp_by_row <- rbind(perp_by_row, perplexity(testing))
+  }
+  perp_by_col <- cbind(perp_by_col, perp_by_row)
+}
+
+# Plot 
+transpose <- t(perp_by_col)
+matplot(transpose, type = "l", col = rainbow(9), lty = 2, lwd = 2, ylab = "Perplexity", xlab = "K", main = "CTM-10-fold cross validation", xaxt="n")
+axis(1, at=1:10, labels = c("k=2", "k=3", "k=4", "k=5", "k=6", "k=7", "k=8", "k=9", "k=10", "k=15"), cex=0.5)
+
+perp_by_col_mean <- colMeans(perp_by_col)
+
+lines(perp_by_col_mean, col = "black", lwd = 4, lty = 1)
+led <- c("fold=2", "fold=3", "fold=4", "fold=5", "fold=6", "fold=7", "fold=8", "fold=9", "fold=10", "Average")
+legend("topright", led, lwd = 2, lty = 2, col = c(rainbow(9), 'black'), cex = 0.65)
+
+abline(v = 4, col = "gray60", lty = 2)
