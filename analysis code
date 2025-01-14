@@ -1,12 +1,3 @@
----
-title: "equity_bill_tm"
-author: "rin"
-date: "2024-12-05"
-output: html_document
-editor_options: 
-  markdown: 
-    wrap: 72
----
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -199,6 +190,10 @@ min_bill <- min(word_lengths)
 max_bill <- max(word_lengths)
 
 
+
+
+```
+
 Summary Statistics
 
 | Variable                  | Count    |
@@ -215,6 +210,13 @@ Summary Statistics
 Used 10 k, as it was a compromise between minimizing and maximizing..
 
 ```{r}
+#  a sample of 100 records
+set.seed(100)  # For reproducibility
+sample_indices <- sample(1:nrow(df_clean), 100)
+sample_texts <- df_clean$bill_text[sample_indices]
+sample_DTM <- text_DTM_trimmed[sample_indices,]
+
+# Control parameters 
 control_CTM_VEM <- list(
   estimate.beta = TRUE, verbose = 0, prefix = tempfile(), save = 0, keep = 0,
   seed = as.integer(Sys.time()), nstart=1L, best = TRUE,
@@ -223,35 +225,326 @@ control_CTM_VEM <- list(
   cg = list(iter.max=100, tol=10^5)
 )
 
+# cross-validation with sample
 set.seed(100)
-topics <- c(2, 3, 4, 5, 6, 7, 8, 9, 10, 15) ##set k equals to 2 3 4 5 6 7 8 9 10 15.
+topics <- c(2, 3, 4, 5, 6, 7, 8, 9, 10, 15)
 seed <- 2
-D <- length(df_clean$bill_text) 
+D <- 100  # New sample size
 folding <- sample(rep(seq_len(10), ceiling(D))[seq_len(D)])
 table(folding)
 
+# Cross-validation loop with sampled data
 perp_by_col <- vector()
 for (k in topics) {
- perp_by_row <- vector()
+  perp_by_row <- vector()
   for (chain in seq_len(10)) {
-    training <- CTM(text_DTM_trimmed[folding != chain,], k = k,
-                    control = control_CTM_VEM)
-    testing <- CTM(text_DTM_trimmed[folding == chain,], model = training,
+    training <- CTM(sample_DTM[folding != chain,], k = k,
                    control = control_CTM_VEM)
+    testing <- CTM(sample_DTM[folding == chain,], model = training,
+                  control = control_CTM_VEM)
     perp_by_row <- rbind(perp_by_row, perplexity(testing))
   }
   perp_by_col <- cbind(perp_by_col, perp_by_row)
 }
 
-# Plot 
+# Plot (remains the same)
 transpose <- t(perp_by_col)
-matplot(transpose, type = "l", col = rainbow(9), lty = 2, lwd = 2, ylab = "Perplexity", xlab = "K", main = "CTM-10-fold cross validation", xaxt="n")
-axis(1, at=1:10, labels = c("k=2", "k=3", "k=4", "k=5", "k=6", "k=7", "k=8", "k=9", "k=10", "k=15"), cex=0.5)
-
+matplot(transpose, type = "l", col = rainbow(9), lty = 2, lwd = 2, 
+        ylab = "Perplexity", xlab = "K", 
+        main = "CTM-10-fold cross validation (n=50)", xaxt="n")
+axis(1, at=1:10, labels = c("k=2", "k=3", "k=4", "k=5", "k=6", "k=7", "k=8", 
+                           "k=9", "k=10", "k=15"), cex=0.5)
 perp_by_col_mean <- colMeans(perp_by_col)
-
 lines(perp_by_col_mean, col = "black", lwd = 4, lty = 1)
-led <- c("fold=2", "fold=3", "fold=4", "fold=5", "fold=6", "fold=7", "fold=8", "fold=9", "fold=10", "Average")
+led <- c("fold=2", "fold=3", "fold=4", "fold=5", "fold=6", "fold=7", "fold=8", 
+         "fold=9", "fold=10", "Average")
 legend("topright", led, lwd = 2, lty = 2, col = c(rainbow(9), 'black'), cex = 0.65)
-
 abline(v = 4, col = "gray60", lty = 2)
+
+{plot(perp_by_col_mean, pch = 20, ylab = 'Perplexity', xlab = "K", main = "CTM-10-fold cross validation", 
+      xaxt = "n") 
+  axis(1, at = 1:10, labels = c("k=2","k=3","k=4","k=5","k=6","k=7","k=8","k=9","k=10","k=15"), cex = 0.5)
+  lines(perp_by_col_mean, lwd = 1, lty = 2, col = "red")}
+
+```
+
+##### fitting model with 10 k / pulling top terms for each topic / labeling topics
+
+------------------------------------------------------------------------
+
+```{r}
+
+CTM_eb <- CTM(dtm, k = 8, control = control_CTM_VEM)
+CTM_eb
+
+topics <- posterior(CTM_eb)$topics
+
+topics <- as.data.frame(topics)
+rownames(topics) <- dtm$Doc
+main_topic6 <- as.data.frame(topics(CTM_eb))
+
+terms(CTM_eb,50)
+
+tidy_topics <- tidy(CTM_eb, matrix = "beta")
+tidy_topics
+
+topic_labels <- list(
+  "1" = "International Relations and Civil Rights",
+  "2" = "Environmental and Security Policy",
+  "3" = "Economic and Social Services",
+  "4" = "Program Administration and Grants",
+  "5" = "Natural Resources and Environment",
+  "6" = "Fiscal and Appropriations",
+  "7" = "Healthcare and Education",
+  "8" = "Administrative Procedures"
+)
+
+# Get top terms
+top_terms <- tidy_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Create plot with new labels
+top_terms %>%
+  mutate(
+    topic_name = factor(topic, 
+                       levels = 1:8, 
+                       labels = unlist(topic_labels)),
+    term = reorder_within(term, beta, topic_name)
+  ) %>%
+  ggplot(aes(beta, term, fill = topic_name)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic_name, scales = "free", ncol = 2) +
+  scale_y_reordered() +
+  labs(
+    title = "Top Terms by Topic",
+    x = "Beta",
+    y = "Term"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 8, face = "bold"),
+    axis.text.y = element_text(size = 8)
+  )
+```
+
+#### Top documents & titles for each topic
+
+
+
+```{r}
+library(stm)
+library(dplyr)
+
+topic_proportions <- posterior(CTM_eb)$topics 
+word_distributions <- posterior(CTM_eb)$terms
+
+rownames(topic_proportions) <- df_clean$bill.id 
+topic_pr_cmb <- cbind(df_clean, topic_proportions)
+
+top_bills_50 <- topic_pr_cmb %>%
+  rename_with(~ paste0("topic_", .), `1`:`8`) %>%
+  pivot_longer(cols = starts_with("topic_"), names_to = "topic", values_to = "probability") %>%
+  # Extract topic number by removing "topic_" prefix
+  mutate(
+    topic_num = str_extract(topic, "\\d+"),
+    topic_label = as.character(topic_labels[topic_num])
+  ) %>%
+  group_by(topic) %>%
+  slice_max(probability, n = 5)
+
+
+titles <- top_bills_50[c("title", "topic_label", "probability")]
+
+top_10_bills <- titles %>%
+  group_by(topic_label) %>%
+  filter(probability == max(probability)) %>%
+  slice_max(probability, n = 1)
+
+kable(top_10_bills, caption = "Top Bill for each Topics")
+```
+
+### Lets be more nuanced about the content of these bills...How are they talking about these topics?
+
+It's mostly neutral...as expected due to the legal nature
+
+```{r}
+library(viridis)
+sentiment_terms <- tidy_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 1000) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+sentiment_terms <- sentiment_terms %>%
+  mutate(
+    topic_label = case_when(
+      topic == 1 ~ topic_labels[["1"]],
+      topic == 2 ~ topic_labels[["2"]],
+      topic == 3 ~ topic_labels[["3"]],
+      topic == 4 ~ topic_labels[["4"]],
+      topic == 5 ~ topic_labels[["5"]],
+      topic == 6 ~ topic_labels[["6"]],
+      topic == 7 ~ topic_labels[["7"]],
+      topic == 8 ~ topic_labels[["8"]],
+      TRUE ~ NA_character_
+    )
+  )
+
+bill_bing <- sentiment_terms %>%
+left_join(get_sentiments("bing"), by = c("term" = "word")) %>%
+  mutate(sentiment = ifelse(is.na(sentiment), "neutral", sentiment)) %>%
+  group_by(topic_label) 
+
+bill_bing_sentiment <- bill_bing %>% 
+  count(topic_label, sentiment)
+
+ggplot(bill_bing_sentiment, aes(x = factor(topic_label), y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Sentiment Distribution by Topic", x = "Topic", y = "Word Count") +
+  scale_fill_manual(values = c("negative" = "orange", "positive" = "blue", "neutral" = "grey")) +
+  theme_minimal() +   
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##  without neutral 
+pos_neg_bill <- bill_bing_sentiment %>%
+  filter(sentiment != "neutral")
+
+ggplot(pos_neg_bill, aes(x = topic_label, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d(
+    direction = -1
+  ) +
+  labs(
+    title = "Sentiment Frequency by Topic",
+    x = "Topic",
+    y = "Frequency",
+    fill = "Sentiment"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+```
+
+#### **Proportional Representation of Topics**
+
+```{r}
+library(knitr)
+prop_topic_doc <- topic_pr_cmb %>%
+  rename_with(~ paste0("topic_", .), `1`:`8`) %>%
+  pivot_longer(cols = starts_with("topic_"), names_to = "topic", values_to = "probability") %>%
+  # Extract topic number from the topic column
+  mutate(
+    topic_num = str_extract(topic, "\\d+"),
+    topic_label = topic_labels[topic_num]
+  )
+
+
+```
+
+```{r}
+library(ggplot2)
+library(igraph)
+
+
+bills_data_wide <- prop_topic_doc %>%
+  dplyr::select("bill_id", "topic_label", "probability") %>%
+  spread(key = topic_label, value = probability, fill = 0)
+
+head(bills_data_wide)
+
+topic_corr <- cor(bills_data_wide[,-1])  
+
+
+library(corrplot)
+library(viridis)
+
+corrplot <- corrplot(topic_corr, method = "color", type = "lower", tl.col = "black", 
+         tl.cex = 0.7, col = viridis(9), title="Topic Correlation",
+         mar=c(0,0,2,0))
+
+
+  
+```
+
+### 
+
+```{r}
+#quick view
+library(datawizard)
+test1 <- findAssocs(dtm, "equity", 0.6)
+test1 <- data.frame(test1)
+
+
+test2 <- findAssocs(dtm, "equality", 0.5)
+test2 <- data.frame(test2)
+
+test1_df <- data.frame(variable = rownames(test1), correlation = test1$equity)
+test2_df <- data.frame(variable = rownames(test2), correlation = test2$equality)
+
+
+test1_df <- test1_df[order(test1_df$correlation, decreasing = TRUE), ]
+
+
+ggplot(test1_df, aes(x = reorder(variable, correlation), y = correlation, fill = correlation)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  theme_minimal() +
+  labs(
+    title = "Correlation with the term Equity",
+    x = "Term",
+    y = "Correlation Coefficient",
+    fill = "Correlation"
+  ) +
+  theme(
+    axis.text.y = element_text(hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+
+  geom_text(aes(label = sprintf("%.2f", correlation)), 
+            position = position_dodge(width = 0.9), 
+            hjust = -0.2)
+
+
+
+library(igraph)
+
+edges <- data.frame(
+  from = rep("equity", nrow(test1_df)),
+  to = test1_df$variable,
+  weight = test1_df$correlation
+)
+
+
+graph <- graph_from_data_frame(edges)
+
+library(RColorBrewer)
+
+palette <- brewer.pal(n = 8, name = "Set2")  # Set2 palette
+
+vertex_color <- adjustcolor(palette[1], alpha.f = 0.6) 
+edge_color <- adjustcolor(palette[2], alpha.f = 0.4)    
+
+layout <- layout_with_fr(graph)
+
+plot(
+  graph,
+  layout = layout * 1.5,  
+  vertex.shape="none", 
+  edge.arrow.size = 0.3,                
+  edge.color = edge_color,
+  edge.curved=0.3, # Transparent edge color
+  vertex.color = vertex_color,         
+  vertex.frame.color = "#ffffff",       
+  vertex.label = V(graph)$variable,     
+  vertex.label.color = "black",         
+  vertex.label.cex = .7,               
+  main = "Term Correlation To Equity",
+  sub = "Decreasing Correlation out from center (0.9 - 0.6)" 
+  
+)
