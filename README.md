@@ -1,5 +1,24 @@
-# Understanding-Equity-in-Policy (UPDATE IN PROGRESS)
+# Understanding-Equity-in-Policy 
 An Examination of Legislative Approaches Through Topic Modeling
 
-Equity-focused policymaking in the U.S. addresses systemic inequality across education, healthcare, and public services. This study analyzes 465 equity-related bills from the 117th Congressional session using topic modeling and semantic analysis to uncover patterns, correlations, and gaps in legislative priorities. Findings reveal fragmented equity discourse, with administrative regulations and education programs receiving significant attention, while areas like financial planning and contracts are underexplored. Healthcare terms and geographically specific language highlight initiatives supporting health and marginalized communities. These trends underscore the need for sustained analysis to address disparities and promote integrated, intersectional approaches. This research offers policymakers, scholars, and advocates actionable insights into advancing equity through comprehensive legislative efforts.
+### Overview
+Analyzed 465 equity-related bills from the 117th U.S. Congressional session using computational topic modeling to uncover patterns in legislative priorities around equity and systemic inequality. The project applied advanced NLP techniques to understand how equity is conceptualized and operationalized across different policy domains.
+
+### Methodology
+
+- Implemented targeted Boolean search on Govinfo.gov database to identify equity-focused legislation
+- Developed Python web scraping pipeline using BeautifulSoup to extract full bill texts
+- Applied preprocessing in R including tokenization, lemmatization, and custom stop word filtering
+- Utilized Correlated Topic Modeling (CTM) to analyze semantic relationships and topic interdependencies
+- Generated correlation matrices and network visualizations to map relationships between policy domains
+
+### Key Findings
+
+- Identified 8 distinct policy domains addressing equity, including Healthcare & Education, Economic & Social Services, and Environmental Policy
+- Discovered significant fragmentation in equity discourse across policy areas, with most domains showing negative correlations
+- Found strong correlations between administrative procedures and program implementation, suggesting opportunities for operational integration
+- Revealed geographic and healthcare-specific equity initiatives as dominant themes in recent legislation
+
+### Impact
+This research provides data-driven insights for policymakers and advocates working to advance equity through legislation. The analysis highlights gaps in intersectional approaches and opportunities for more integrated policy development across sectors.
 
