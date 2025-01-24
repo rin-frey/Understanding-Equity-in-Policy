@@ -2,7 +2,7 @@
 An Examination of Legislative Approaches Through Topic Modeling
 
 ### Overview
-Analyzed 465 equity-related bills from the 117th U.S. Congressional session using computational topic modeling to uncover patterns in legislative priorities around equity and systemic inequality. The project applied advanced NLP techniques to understand how equity is conceptualized and operationalized across different policy domains.
+Analyzed 465 equity-related bills from the 117th U.S. Congressional session using topic modeling to uncover patterns in legislative priorities around equity and systemic inequality. The project applied advanced NLP techniques to understand how equity is conceptualized and operationalized across different policy domains.
 
 ### Methodology
 
@@ -12,7 +12,7 @@ Analyzed 465 equity-related bills from the 117th U.S. Congressional session usin
 - Utilized Correlated Topic Modeling (CTM) to analyze semantic relationships and topic interdependencies
 - Generated correlation matrices and network visualizations to map relationships between policy domains
 
-### Key Findings
+### Findings
 
 - Identified 8 distinct policy domains addressing equity, including Healthcare & Education, Economic & Social Services, and Environmental Policy
 - Discovered significant fragmentation in equity discourse across policy areas, with most domains showing negative correlations
