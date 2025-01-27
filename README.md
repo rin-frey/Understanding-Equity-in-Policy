@@ -1,4 +1,4 @@
-# Understanding-Equity-in-Policy 
+# Understanding Equity Framing in Policy 
 An Examination of Legislative Approaches Through Topic Modeling
 
 ### Overview
