@@ -17,7 +17,7 @@ Analyzed 465 equity-related bills from the 117th U.S. Congressional session usin
 - Identified 8 distinct policy domains addressing equity, including Healthcare & Education, Economic & Social Services, and Environmental Policy
 - Discovered significant fragmentation in equity discourse across policy areas, with most domains showing negative correlations
 - Found strong correlations between administrative procedures and program implementation, suggesting opportunities for operational integration
-- Revealed geographic and healthcare-specific equity initiatives as dominant themes in recent legislation
+- Geographic and healthcare-specific equity initiatives appear dominant themes in recent legislation
 
 ### Impact
 This research provides data-driven insights for policymakers and advocates working to advance equity through legislation. The analysis highlights gaps in intersectional approaches and opportunities for more integrated policy development across sectors.
